@@ -11,19 +11,39 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 //вершинный шейдер (англ. «vertex shader»)
+//const char* vertexShaderSource = "#version 330 core\n" //номера версий GLSL соответствуют версии OpenGL
+//"layout (location = 0) in vec3 aPos;\n" //устанавливаем местоположение входной переменной (c)
+//"void main()\n"
+//"{\n"
+//"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" //4-я компонент используется для перспективного деления (c)
+//"}\0"; //GLSL - OpenGL Shading Language
+
+//вершинный шейдер многоцветный (англ. «vertex shader»)
 const char* vertexShaderSource = "#version 330 core\n" //номера версий GLSL соответствуют версии OpenGL
 "layout (location = 0) in vec3 aPos;\n" //устанавливаем местоположение входной переменной (c)
+"layout (location = 1) in vec3 aColor;\n"
+"out vec3 color;\n"
 "void main()\n"
 "{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n" //4-я компонент используется для перспективного деления (c)
+"   color = aColor;\n"
+"   gl_Position = vec4(aPos, 1.0);\n" //4-я компонент используется для перспективного деления (c)
 "}\0"; //GLSL - OpenGL Shading Language
 
-//фрагментный шейдер (англ. «fragment shader»)
+//фрагментный шейдер одноцветный (англ. «fragment shader»)
+//const char* fragmentShaderSource = "#version 330 core\n"
+//"out vec4 FragColor;\n"
+//"void main()\n"
+//"{\n"
+//"   FragColor = vec4(1.0f, 0.0f, 1.0f, 0.0f);\n" //glColor(float red, float green, float blue, float alpha(opacity))
+//"}\n\0";
+
+//фрагментный шейдер многоцветный (англ. «fragment shader»)
 const char* fragmentShaderSource = "#version 330 core\n"
+"in vec3 color;\n"
 "out vec4 FragColor;\n"
 "void main()\n"
 "{\n"
-"   FragColor = vec4(1.0f, 0.0f, 1.0f, 0.0f);\n" //glColor(float red, float green, float blue, float alpha(opacity))
+"   FragColor = vec4(color, 1.0);\n" //glColor(float red, float green, float blue, float alpha(opacity))
 "}\n\0";
 
 int main()
@@ -106,24 +126,47 @@ int main()
          0.0f,  0.5f, 0.0f  // верхняя вершина   
     };
 
-    unsigned int VBO, VAO;
+    // Указывание цветов вершин
+    float color[] = {
+         1.0f, 0.0f, 0.0f, // левая вершина
+         0.0f, 1.0f, 0.0f, // правая вершина
+         0.0f, 0.0f, 1.0f  // верхняя вершина   
+    };
+
+    unsigned int pVBO, cVBO, VAO;
     glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &pVBO);
+    glGenBuffers(1, &cVBO);
 
-    // Сначала связываем объект вершинного массива, затем связываем и устанавливаем вершинный буфер(ы), и затем конфигурируем вершинный атрибут(ы)
+    // Сначала связываем объект вершинного массива, затем связываем и устанавливаем 
+    // вершинный буфер(ы), и затем конфигурируем вершинный атрибут(ы)
     glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, pVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    // Обратите внимание, что данное действие разрешено, вызов glVertexAttribPointer() зарегистрировал VBO как привязанный вершинный буферный объект для вершинного атрибута, так что после этого мы можем спокойно выполнить отвязку
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, cVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(color), color, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // Вы можете отменить привязку VAO после этого, чтобы другие вызовы VAO случайно не изменили этот VAO (но подобное довольно редко случается).
-    // Модификация других VAO требует вызова glBindVertexArray(), поэтому мы обычно не снимаем привязку VAO (или VBO), когда это не требуется напрямую
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, pVBO);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, cVBO);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    
+    // Обратите внимание, что данное действие разрешено, вызов glVertexAttribPointer() 
+    // зарегистрировал VBO как привязанный вершинный буферный объект для вершинного атрибута, 
+    // так что после этого мы можем спокойно выполнить отвязку
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Вы можете отменить привязку VAO после этого, чтобы другие вызовы VAO случайно 
+    // не изменили этот VAO (но подобное довольно редко случается).
+    // Модификация других VAO требует вызова glBindVertexArray(), поэтому мы обычно 
+    // не снимаем привязку VAO (или VBO), когда это не требуется напрямую
     glBindVertexArray(0);
 
 
@@ -142,18 +185,22 @@ int main()
 
         // Рисуем наш первый треугольник
         glUseProgram(shaderProgram);
-        glBindVertexArray(VAO); // поскольку у нас есть только один VAO, то нет необходимости связывать его каждый раз (но мы сделаем это, чтобы всё было немного организованнее)
+        glBindVertexArray(VAO); // поскольку у нас есть только один VAO, 
+                                // то нет необходимости связывать его каждый 
+                                // раз (но мы сделаем это, чтобы всё было немного организованнее)
         glDrawArrays(GL_TRIANGLES, 0, 3);
         // glBindVertexArray(0); // не нужно каждый раз его отвязывать
 
-        // glfw: обмен содержимым front- и back-буферов. Отслеживание событий ввода/вывода (была ли нажата/отпущена кнопка, перемещен курсор мыши и т.п.)
+        // glfw: обмен содержимым front- и back-буферов. Отслеживание событий ввода/вывода 
+        // (была ли нажата/отпущена кнопка, перемещен курсор мыши и т.п.)
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     // Опционально: освобождаем все ресурсы, как только они выполнили свое предназначение
     glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &pVBO);
+    glDeleteBuffers(1, &cVBO);
 
     // glfw: завершение, освобождение всех ранее задействованных GLFW-ресурсов
     glfwTerminate();
